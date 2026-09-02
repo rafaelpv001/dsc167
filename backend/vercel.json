@@ -4,10 +4,5 @@
     "api/index.ts": {
       "maxDuration": 30
     }
-  },
-  "crons": [
-    { "path": "/api/internal/cron/expire-orders", "schedule": "*/5 * * * *" },
-    { "path": "/api/internal/cron/cleanup-demo", "schedule": "*/5 * * * *" },
-    { "path": "/api/internal/cron/reconcile-payments", "schedule": "*/10 * * * *" }
-  ]
+  }
 }

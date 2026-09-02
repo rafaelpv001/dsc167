@@ -205,7 +205,7 @@ Isso afeta três coisas do backend, já adaptadas no código:
 
 | Recurso | Desenvolvimento / hospedagem tradicional | Vercel (serverless) |
 |---|---|---|
-| Cron (expiração, limpeza demo, reconciliação) | `@nestjs/schedule` (`@Cron`) | [Vercel Cron Jobs](https://vercel.com/docs/cron-jobs) chamando `/api/internal/cron/*` (ver `backend/vercel.json`) |
+| Cron (expiração, limpeza demo, reconciliação) | `@nestjs/schedule` (`@Cron`) | Um scheduler externo chamando `/api/internal/cron/*` a cada poucos minutos (ver seção abaixo) — o [Vercel Cron Jobs](https://vercel.com/docs/cron-jobs) nativo só roda 1x/dia no plano Hobby, cedo demais para expiração de reserva |
 | Upload de imagem da rifa | disco local (`backend/uploads`) | [Vercel Blob](https://vercel.com/docs/storage/vercel-blob) — ativado automaticamente quando `BLOB_READ_WRITE_TOKEN` está definido |
 | Tempo real (SSE) | conexão persistente funciona normalmente | **limitado** — funções serverless têm duração máxima e a conexão do `EventSource` pode cair; o cliente reconecta, mas não é garantido em produção. Se isso importar, considere polling no frontend ou mover só o backend para um host com processo persistente (Railway, Render, VPS) |
 
@@ -223,7 +223,7 @@ monorepo:
    - `DATABASE_URL` — a connection string do Postgres (ex.: Prisma Postgres/Vercel Postgres)
    - `JWT_SECRET`, `SESSION_SECRET` — valores fortes, gerados só para produção
    - `APP_URL` — a URL do deploy do **frontend** (para CORS)
-   - `CRON_SECRET` — qualquer valor aleatório forte; o Vercel injeta automaticamente esse mesmo valor como `Authorization: Bearer <CRON_SECRET>` nas chamadas dos Cron Jobs, autenticando-as
+   - `CRON_SECRET` — qualquer valor aleatório forte; usado para autenticar as chamadas do scheduler externo aos endpoints `/api/internal/cron/*` (ver "Agendando as tarefas periódicas" abaixo)
    - `BLOB_READ_WRITE_TOKEN` — crie um Blob Store em Storage → Blob e copie o token; sem isso, o upload de imagem falha em produção (o disco local não é gravável/persistente no Vercel)
    - `DEMO_MODE=false` em produção real
 4. Antes do primeiro deploy funcionar de ponta a ponta, rode as migrations
@@ -236,6 +236,32 @@ monorepo:
    ```
 5. Deploy. O backend fica em algo como `https://<projeto>.vercel.app`; teste
    `GET /api/raffles` para confirmar que subiu.
+
+### Agendando as tarefas periódicas (expiração, limpeza demo, reconciliação)
+
+O plano Hobby do Vercel limita Cron Jobs nativos a 1 execução por dia — inútil
+para expirar reservas de 30-60 minutos. Em vez disso, use um scheduler
+externo gratuito para chamar os três endpoints a cada poucos minutos:
+
+| Endpoint | Frequência sugerida |
+|---|---|
+| `GET /api/internal/cron/expire-orders` | a cada 5 minutos |
+| `GET /api/internal/cron/cleanup-demo` | a cada 5 minutos (só importa com `DEMO_MODE=true`) |
+| `GET /api/internal/cron/reconcile-payments` | a cada 10 minutos |
+
+Todos exigem o header `Authorization: Bearer <CRON_SECRET>` (o mesmo valor
+configurado na env var do backend). Opções gratuitas:
+
+- **[cron-job.org](https://cron-job.org)** — permite intervalo de 1 minuto no
+  plano grátis; em cada job, adicione um "Custom Header" com
+  `Authorization: Bearer <CRON_SECRET>` e aponte para a URL completa do
+  endpoint (`https://<projeto>.vercel.app/api/internal/cron/expire-orders`).
+- **GitHub Actions agendado** (`schedule: cron`) no próprio repositório,
+  rodando um `curl` com o header — útil se preferir manter tudo no GitHub.
+- Se migrar para o **plano Pro do Vercel**, pode voltar a usar Vercel Cron
+  nativo — adicione de volta um bloco `"crons"` em `backend/vercel.json`
+  apontando para os mesmos três endpoints (havia um exemplo assim antes
+  deste commit; veja `git log -p backend/vercel.json`).
 
 ### 2. Frontend (`frontend/`)
 
