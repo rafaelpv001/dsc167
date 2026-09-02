@@ -30,6 +30,6 @@ import { RealtimeModule } from '../realtime/realtime.module';
         config.get<boolean>('demo.enabled') ? demo : pagbank,
     },
   ],
-  exports: [PaymentsService],
+  exports: [PaymentsService, PaymentsReconciliationJob],
 })
 export class PaymentsModule {}

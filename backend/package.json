@@ -34,6 +34,7 @@
     "@nestjs/schedule": "^4.1.2",
     "@nestjs/swagger": "^7.4.2",
     "@nestjs/throttler": "^5.2.0",
+    "@vercel/blob": "^0.27.1",
     "@prisma/client": "^5.22.0",
     "argon2": "^0.41.1",
     "class-transformer": "^0.5.1",

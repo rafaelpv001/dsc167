@@ -196,6 +196,56 @@ por token compartilhado) de forma testável e substituível.
 - Sirva atrás de HTTPS (cookies `secure` só ativam em produção).
 - Ajuste `APP_URL`/CORS para o domínio real.
 
+## Deploy no Vercel
+
+O Vercel é serverless — não existe um processo Node que fica sempre no ar.
+Isso afeta três coisas do backend, já adaptadas no código:
+
+| Recurso | Desenvolvimento / hospedagem tradicional | Vercel (serverless) |
+|---|---|---|
+| Cron (expiração, limpeza demo, reconciliação) | `@nestjs/schedule` (`@Cron`) | [Vercel Cron Jobs](https://vercel.com/docs/cron-jobs) chamando `/api/internal/cron/*` (ver `backend/vercel.json`) |
+| Upload de imagem da rifa | disco local (`backend/uploads`) | [Vercel Blob](https://vercel.com/docs/storage/vercel-blob) — ativado automaticamente quando `BLOB_READ_WRITE_TOKEN` está definido |
+| Tempo real (SSE) | conexão persistente funciona normalmente | **limitado** — funções serverless têm duração máxima e a conexão do `EventSource` pode cair; o cliente reconecta, mas não é garantido em produção. Se isso importar, considere polling no frontend ou mover só o backend para um host com processo persistente (Railway, Render, VPS) |
+
+O projeto são **dois deploys separados no Vercel** (frontend Next.js e
+backend NestJS), cada um como um "Project" apontando para uma subpasta deste
+monorepo:
+
+### 1. Backend (`backend/`)
+
+1. No Vercel, **Add New → Project** → importe este repositório → em
+   "Root Directory" selecione `backend`
+2. Framework Preset: **Other** (o `backend/vercel.json` já configura tudo)
+3. Configure as variáveis de ambiente do projeto (Settings → Environment
+   Variables) — os mesmos nomes do `.env.example`, com destaque para:
+   - `DATABASE_URL` — a connection string do Postgres (ex.: Prisma Postgres/Vercel Postgres)
+   - `JWT_SECRET`, `SESSION_SECRET` — valores fortes, gerados só para produção
+   - `APP_URL` — a URL do deploy do **frontend** (para CORS)
+   - `CRON_SECRET` — qualquer valor aleatório forte; o Vercel injeta automaticamente esse mesmo valor como `Authorization: Bearer <CRON_SECRET>` nas chamadas dos Cron Jobs, autenticando-as
+   - `BLOB_READ_WRITE_TOKEN` — crie um Blob Store em Storage → Blob e copie o token; sem isso, o upload de imagem falha em produção (o disco local não é gravável/persistente no Vercel)
+   - `DEMO_MODE=false` em produção real
+4. Antes do primeiro deploy funcionar de ponta a ponta, rode as migrations
+   contra o banco de produção a partir da sua máquina:
+   ```powershell
+   cd backend
+   $env:DATABASE_URL="<a mesma URL configurada no Vercel>"
+   npx prisma migrate deploy
+   npx prisma db seed
+   ```
+5. Deploy. O backend fica em algo como `https://<projeto>.vercel.app`; teste
+   `GET /api/raffles` para confirmar que subiu.
+
+### 2. Frontend (`frontend/`)
+
+1. **Add New → Project** novamente → mesmo repositório → "Root Directory" = `frontend`
+2. Framework Preset: **Next.js** (detectado automaticamente)
+3. Variável de ambiente: `NEXT_PUBLIC_API_URL` = URL do backend implantado no passo anterior
+4. Deploy.
+
+Depois dos dois deploys, volte no projeto do **backend** e confirme que
+`APP_URL` aponta para a URL final do frontend (necessário para o CORS
+liberar as requisições do navegador).
+
 ## Testes
 
 ```powershell

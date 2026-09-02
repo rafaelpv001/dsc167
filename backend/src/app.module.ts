@@ -21,6 +21,7 @@ import { PaymentsModule } from './modules/payments/payments.module';
 import { DrawsModule } from './modules/draws/draws.module';
 import { ReportsModule } from './modules/reports/reports.module';
 import { RealtimeModule } from './modules/realtime/realtime.module';
+import { InternalCronModule } from './modules/internal-cron/internal-cron.module';
 
 @Module({
   imports: [
@@ -43,6 +44,7 @@ import { RealtimeModule } from './modules/realtime/realtime.module';
     DrawsModule,
     ReportsModule,
     RealtimeModule,
+    InternalCronModule,
   ],
   controllers: [AppController],
   providers: [

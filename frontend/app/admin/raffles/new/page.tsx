@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { api, ApiError, API_URL } from '../../../../services/api';
 import { GoldButton } from '../../../../components/ui/GoldButton';
+import { resolveMediaUrl } from '../../../../utils/format';
 import type { RafflePublic } from '../../../../types/raffle';
 
 export default function NewRafflePage() {
@@ -91,7 +92,7 @@ export default function NewRafflePage() {
           {coverImageUrl && (
             // eslint-disable-next-line @next/next/no-img-element
             <img
-              src={`${API_URL}${coverImageUrl}`}
+              src={resolveMediaUrl(coverImageUrl, API_URL)}
               alt="Pré-visualização do prêmio"
               className="mt-2 h-40 w-full rounded-lg border border-gold/30 object-cover"
             />

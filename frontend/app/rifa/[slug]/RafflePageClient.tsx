@@ -9,7 +9,7 @@ import { CustomerForm } from '../../../components/CustomerForm';
 import { SiteHeader } from '../../../components/SiteHeader';
 import { useNumberSelection } from '../../../hooks/useNumberSelection';
 import { api, ApiError, API_URL } from '../../../services/api';
-import { formatCents, formatDate } from '../../../utils/format';
+import { formatCents, formatDate, resolveMediaUrl } from '../../../utils/format';
 import type { OrderPublic, RafflePublic } from '../../../types/raffle';
 
 const STATUS_LABEL: Record<RafflePublic['status'], string> = {
@@ -58,7 +58,7 @@ export function RafflePageClient({ raffle }: { raffle: RafflePublic }) {
           {raffle.coverImageUrl && (
             // eslint-disable-next-line @next/next/no-img-element
             <img
-              src={raffle.coverImageUrl.startsWith('http') ? raffle.coverImageUrl : `${API_URL}${raffle.coverImageUrl}`}
+              src={resolveMediaUrl(raffle.coverImageUrl, API_URL)}
               alt={`Prêmio: ${raffle.title}`}
               className="mb-4 max-h-72 w-full rounded-xl border border-gold/30 object-cover"
             />

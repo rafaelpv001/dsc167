@@ -13,6 +13,6 @@ import { RealtimeModule } from '../realtime/realtime.module';
   imports: [CustomersModule, AuditModule, RealtimeModule, forwardRef(() => PaymentsModule)],
   controllers: [OrdersPublicController, OrdersAdminController],
   providers: [OrdersService, OrdersExpirationJob, DemoCleanupJob],
-  exports: [OrdersService],
+  exports: [OrdersService, OrdersExpirationJob, DemoCleanupJob],
 })
 export class OrdersModule {}

@@ -22,6 +22,13 @@ export default () => ({
     apiUrl: process.env.PAGBANK_API_URL,
     webhookUrl: process.env.PAGBANK_WEBHOOK_URL,
   },
+  // Segredo usado pelos endpoints /api/internal/cron/* — em produção no Vercel,
+  // a própria plataforma envia este valor como "Authorization: Bearer <CRON_SECRET>"
+  // automaticamente quando a env var CRON_SECRET está definida no projeto.
+  cronSecret: process.env.CRON_SECRET,
+  storage: {
+    blobToken: process.env.BLOB_READ_WRITE_TOKEN,
+  },
   demo: {
     enabled: process.env.DEMO_MODE === 'true',
     adminEmail: process.env.DEMO_ADMIN_EMAIL ?? 'teste',
