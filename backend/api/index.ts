@@ -1,3 +1,9 @@
+// Precisa ser o primeiro import: os decorators do Nest (@Controller,
+// @Injectable, @Module...) dependem do polyfill Reflect.defineMetadata.
+// Ao rodar via `nest start`/`nest build`, o Nest CLI injeta isso
+// automaticamente — mas o bundler do Vercel compila este arquivo direto,
+// sem passar pelo CLI, então precisa ser explícito aqui.
+import 'reflect-metadata';
 import express from 'express';
 import { ExpressAdapter } from '@nestjs/platform-express';
 import type { INestApplication } from '@nestjs/common';
