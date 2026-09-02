@@ -1,0 +1,284 @@
+// Prisma schema - Rifa Online
+// Convenções:
+// - Todo valor monetário é armazenado em centavos (Int), nunca float/Decimal.
+// - IDs são cuid().
+// - FKs usam onDelete: Restrict por padrão para preservar integridade financeira/auditoria.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ---------------------------------------------------------------------------
+// Enums
+// ---------------------------------------------------------------------------
+
+enum RaffleStatus {
+  DRAFT
+  ACTIVE
+  PAUSED
+  CLOSED
+}
+
+enum RaffleNumberStatus {
+  AVAILABLE
+  RESERVED
+  PAID
+}
+
+enum OrderStatus {
+  PENDING_PAYMENT
+  PAID
+  REJECTED
+  EXPIRED
+  CANCELLED
+}
+
+enum PaymentProvider {
+  PAGBANK
+  DEMO
+}
+
+enum PaymentStatus {
+  PENDING
+  PAID
+  CANCELLED
+  EXPIRED
+  FAILED
+  REFUNDED
+}
+
+enum WebhookProcessingStatus {
+  RECEIVED
+  PROCESSED
+  IGNORED
+  FAILED
+}
+
+// ---------------------------------------------------------------------------
+// Models
+// ---------------------------------------------------------------------------
+
+model AdminUser {
+  id           String   @id @default(cuid())
+  name         String
+  email        String   @unique
+  passwordHash String
+  active       Boolean  @default(true)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  auditLogs    AuditLog[]
+  drawnRaffles RaffleDraw[] @relation("RaffleDrawDrawnByAdmin")
+
+  @@map("admin_users")
+}
+
+model Raffle {
+  id                 String       @id @default(cuid())
+  title              String
+  slug               String       @unique
+  description        String?
+  coverImageUrl      String?
+  totalNumbers       Int
+  startNumber        Int          @default(0)
+  unitPriceCents     Int
+  startsAt           DateTime?
+  endsAt             DateTime?
+  reservationMinutes Int          @default(30)
+  status             RaffleStatus @default(DRAFT)
+  createdAt          DateTime     @default(now())
+  updatedAt          DateTime     @updatedAt
+
+  numbers RaffleNumber[]
+  orders  Order[]
+  draw    RaffleDraw?
+
+  @@index([status])
+  @@map("raffles")
+}
+
+model RaffleNumber {
+  id        String             @id @default(cuid())
+  raffleId  String
+  number    String
+  status    RaffleNumberStatus @default(AVAILABLE)
+  orderId   String?
+  createdAt DateTime           @default(now())
+  updatedAt DateTime           @updatedAt
+
+  raffle      Raffle            @relation(fields: [raffleId], references: [id], onDelete: Restrict)
+  order       Order?            @relation(fields: [orderId], references: [id], onDelete: Restrict)
+  drawEntries RaffleDrawEntry[]
+  wonInDraw   RaffleDraw?       @relation("RaffleDrawWinningNumber")
+
+  @@unique([raffleId, number])
+  @@index([raffleId])
+  @@index([status])
+  @@index([orderId])
+  @@map("raffle_numbers")
+}
+
+model Customer {
+  id        String   @id @default(cuid())
+  name      String
+  phone     String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  orders      Order[]
+  draws       RaffleDraw[]
+  drawEntries RaffleDrawEntry[]
+
+  @@index([phone])
+  @@map("customers")
+}
+
+model Order {
+  id              String      @id @default(cuid())
+  publicToken     String      @unique @default(cuid())
+  code            String      @unique
+  raffleId        String
+  customerId      String
+  status          OrderStatus @default(PENDING_PAYMENT)
+  quantity        Int
+  unitPriceCents  Int
+  totalPriceCents Int
+  expiresAt       DateTime
+  paidAt          DateTime?
+  rejectedAt      DateTime?
+  cancelledAt     DateTime?
+  createdAt       DateTime    @default(now())
+  updatedAt       DateTime    @updatedAt
+
+  raffle      Raffle            @relation(fields: [raffleId], references: [id], onDelete: Restrict)
+  customer    Customer          @relation(fields: [customerId], references: [id], onDelete: Restrict)
+  numbers     RaffleNumber[]
+  payment     Payment?
+  draws       RaffleDraw[]      @relation("RaffleDrawOrder")
+  drawEntries RaffleDrawEntry[]
+
+  @@index([code])
+  @@index([publicToken])
+  @@index([raffleId])
+  @@index([customerId])
+  @@index([status])
+  @@index([createdAt])
+  @@index([expiresAt])
+  @@map("orders")
+}
+
+model Payment {
+  id                String          @id @default(cuid())
+  orderId           String          @unique
+  provider          PaymentProvider @default(PAGBANK)
+  providerOrderId   String?
+  providerChargeId  String?
+  providerReference String?
+  amountCents       Int
+  currency          String          @default("BRL")
+  status            PaymentStatus   @default(PENDING)
+  pixQrCode         String?         @db.Text
+  pixQrCodeImage    String?         @db.Text
+  pixCopyPaste      String?         @db.Text
+  expiresAt         DateTime
+  paidAt            DateTime?
+  cancelledAt       DateTime?
+  failedAt          DateTime?
+  createdAt         DateTime        @default(now())
+  updatedAt         DateTime        @updatedAt
+
+  order         Order                 @relation(fields: [orderId], references: [id], onDelete: Restrict)
+  webhookEvents PaymentWebhookEvent[]
+
+  @@index([orderId])
+  @@index([providerOrderId])
+  @@index([providerChargeId])
+  @@index([status])
+  @@map("payments")
+}
+
+model PaymentWebhookEvent {
+  id               String                  @id @default(cuid())
+  provider         PaymentProvider
+  providerEventId  String?
+  eventType        String
+  paymentId        String?
+  payloadHash      String
+  processingStatus WebhookProcessingStatus @default(RECEIVED)
+  receivedAt       DateTime                @default(now())
+  processedAt      DateTime?
+  errorMessage     String?
+
+  payment Payment? @relation(fields: [paymentId], references: [id], onDelete: Restrict)
+
+  @@unique([provider, providerEventId])
+  @@index([payloadHash])
+  @@index([paymentId])
+  @@map("payment_webhook_events")
+}
+
+model RaffleDraw {
+  id                     String   @id @default(cuid())
+  raffleId               String   @unique
+  winningRaffleNumberId  String   @unique
+  winningNumber          String
+  customerId             String
+  orderId                String
+  eligibleNumbersCount   Int
+  eligibleCustomersCount Int
+  drawMethod             String   @default("CRYPTO_RANDOM")
+  algorithm              String   @default("node:crypto.randomInt")
+  drawnByAdminId         String
+  drawnAt                DateTime @default(now())
+  verificationHash       String
+  createdAt              DateTime @default(now())
+
+  raffle              Raffle            @relation(fields: [raffleId], references: [id], onDelete: Restrict)
+  winningRaffleNumber RaffleNumber      @relation("RaffleDrawWinningNumber", fields: [winningRaffleNumberId], references: [id], onDelete: Restrict)
+  customer            Customer          @relation(fields: [customerId], references: [id], onDelete: Restrict)
+  order               Order             @relation("RaffleDrawOrder", fields: [orderId], references: [id], onDelete: Restrict)
+  drawnByAdmin        AdminUser         @relation("RaffleDrawDrawnByAdmin", fields: [drawnByAdminId], references: [id], onDelete: Restrict)
+  entries             RaffleDrawEntry[]
+
+  @@map("raffle_draws")
+}
+
+model RaffleDrawEntry {
+  id             String   @id @default(cuid())
+  drawId         String
+  raffleNumberId String
+  number         String
+  customerId     String
+  orderId        String
+  createdAt      DateTime @default(now())
+
+  draw         RaffleDraw   @relation(fields: [drawId], references: [id], onDelete: Restrict)
+  raffleNumber RaffleNumber @relation(fields: [raffleNumberId], references: [id], onDelete: Restrict)
+  customer     Customer     @relation(fields: [customerId], references: [id], onDelete: Restrict)
+  order        Order        @relation(fields: [orderId], references: [id], onDelete: Restrict)
+
+  @@index([drawId])
+  @@map("raffle_draw_entries")
+}
+
+model AuditLog {
+  id          String   @id @default(cuid())
+  adminUserId String?
+  action      String
+  entity      String
+  entityId    String?
+  metadata    Json?
+  createdAt   DateTime @default(now())
+
+  adminUser AdminUser? @relation(fields: [adminUserId], references: [id], onDelete: Restrict)
+
+  @@index([entity, entityId])
+  @@index([adminUserId])
+  @@index([createdAt])
+  @@map("audit_logs")
+}

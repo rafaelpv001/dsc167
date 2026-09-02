@@ -1,0 +1,17 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --color-gold: #d4af37;
+  --color-noble-blue: #0a2b5b;
+  --color-night-blue: #031a36;
+  --color-off-black: #0b0b0b;
+  --color-off-white: #f8f6f8;
+  --color-bronze: #b8860b;
+}
+
+body {
+  background-color: var(--color-off-white);
+  color: var(--color-off-black);
+}
