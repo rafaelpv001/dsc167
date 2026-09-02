@@ -4,6 +4,7 @@
   "private": true,
   "description": "Rifa Online - backend (NestJS + Prisma + PostgreSQL)",
   "scripts": {
+    "postinstall": "prisma generate",
     "build": "nest build",
     "format": "prettier --write \"src/**/*.ts\"",
     "start": "nest start",
