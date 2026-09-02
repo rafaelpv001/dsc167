@@ -20,12 +20,28 @@ async function bootstrap(): Promise<express.Express> {
       await app.init();
       return app;
     });
+    // Se a inicialização falhar (ex.: DATABASE_URL ausente/inválida), não
+    // deixa a instância presa numa promise rejeitada para sempre — a próxima
+    // invocação tenta inicializar de novo em vez de repetir o mesmo erro.
+    nestAppPromise.catch(() => {
+      nestAppPromise = null;
+    });
   }
   await nestAppPromise;
   return expressApp;
 }
 
 export default async function handler(req: express.Request, res: express.Response) {
-  const server = await bootstrap();
-  server(req, res);
+  try {
+    const server = await bootstrap();
+    server(req, res);
+  } catch (error) {
+    // eslint-disable-next-line no-console
+    console.error('Falha ao inicializar a aplicação Nest (serverless):', error);
+    res.status(500).json({
+      success: false,
+      code: 'BOOTSTRAP_FAILED',
+      message: (error as Error).message,
+    });
+  }
 }
