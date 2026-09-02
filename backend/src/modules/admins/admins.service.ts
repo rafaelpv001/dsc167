@@ -1,5 +1,5 @@
 import { Injectable } from '@nestjs/common';
-import * as argon2 from 'argon2';
+import * as bcrypt from 'bcryptjs';
 import { PrismaService } from '../../prisma/prisma.service';
 import { AuditService } from '../audit/audit.service';
 import { DomainError } from '../../common/filters/domain-error.filter';
@@ -29,7 +29,7 @@ export class AdminsService {
       );
     }
 
-    const passwordHash = await argon2.hash(dto.password);
+    const passwordHash = await bcrypt.hash(dto.password, 12);
     const admin = await this.prisma.adminUser.create({
       data: { name: dto.name, email, passwordHash, active: true },
       select: SAFE_SELECT,

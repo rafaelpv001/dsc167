@@ -1,6 +1,6 @@
 import { Injectable, Logger, UnauthorizedException } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
-import * as argon2 from 'argon2';
+import * as bcrypt from 'bcryptjs';
 import { PrismaService } from '../../prisma/prisma.service';
 import { AuditService } from '../audit/audit.service';
 import type { AuthenticatedAdmin } from '../../common/decorators/current-admin.decorator';
@@ -28,7 +28,7 @@ export class AuthService {
       throw new UnauthorizedException('Credenciais inválidas.');
     }
 
-    const passwordValid = await argon2.verify(admin.passwordHash, password).catch(() => false);
+    const passwordValid = await bcrypt.compare(password, admin.passwordHash).catch(() => false);
     if (!passwordValid) {
       await this.auditService.log({
         adminUserId: admin.id,
@@ -65,6 +65,6 @@ export class AuthService {
   }
 
   async hashPassword(password: string): Promise<string> {
-    return argon2.hash(password);
+    return bcrypt.hash(password, 12);
   }
 }

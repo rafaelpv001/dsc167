@@ -1,5 +1,5 @@
 import { PrismaClient } from '@prisma/client';
-import * as argon2 from 'argon2';
+import * as bcrypt from 'bcryptjs';
 import { generateRaffleNumberValues } from '../src/common/utils/generate-raffle-numbers.util';
 
 const prisma = new PrismaClient();
@@ -16,10 +16,10 @@ async function seedAdmin() {
     return;
   }
 
-  const passwordHash = await argon2.hash(password);
+  const passwordHash = await bcrypt.hash(password, 12);
   const admin = await prisma.adminUser.upsert({
     where: { email: email.toLowerCase() },
-    update: {},
+    update: { name, passwordHash, active: true },
     create: { name, email: email.toLowerCase(), passwordHash, active: true },
   });
 
@@ -38,7 +38,7 @@ async function seedDemo() {
   const demoPassword = process.env.DEMO_ADMIN_PASSWORD ?? 'teste';
   const demoSlug = process.env.DEMO_RAFFLE_SLUG ?? 'rifa-solidaria-de-teste';
 
-  const passwordHash = await argon2.hash(demoPassword);
+  const passwordHash = await bcrypt.hash(demoPassword, 12);
   const demoAdmin = await prisma.adminUser.upsert({
     where: { email: demoEmail },
     update: { passwordHash, active: true },
