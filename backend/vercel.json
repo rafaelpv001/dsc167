@@ -1,4 +1,5 @@
 {
+  "outputDirectory": "public",
   "rewrites": [{ "source": "/((?!api/health).*)", "destination": "/api" }],
   "functions": {
     "api/index.ts": {
