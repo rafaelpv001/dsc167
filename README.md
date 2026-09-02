@@ -102,7 +102,9 @@ Resultado é imutável pela interface normal (sem endpoints de edição/exclusã
 ### Segurança
 bcrypt (via `bcryptjs`, implementação pura em JavaScript — sem binário nativo, evita crashes de
 compatibilidade em ambientes serverless como o Vercel) para senha de admin; JWT em cookie
-HTTPOnly/Secure(prod)/SameSite=Lax; Helmet; CORS restrito a
+HTTPOnly/Secure(prod)/SameSite=Lax em dev, SameSite=None+Secure em produção (frontend e backend costumam
+ficar em domínios diferentes, ex.: dois projetos no Vercel — Lax bloquearia o cookie nas chamadas
+fetch entre eles); Helmet; CORS restrito a
 `APP_URL`; rate limiting global (`@nestjs/throttler`) + limites mais agressivos em login/reservas/
 webhook; validação server-side via `class-validator` com `whitelist`+`forbidNonWhitelisted`; nenhuma
 credencial PagBank é enviada ao navegador; erros de domínio padronizados (`{ success, code, message }`)

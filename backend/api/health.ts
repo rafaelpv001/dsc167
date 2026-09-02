@@ -7,7 +7,10 @@
  * em algo específico do bootstrap da aplicação (import de módulo, Prisma
  * Client, etc.) — ver backend/api/index.ts.
  */
-export default function handler(req: unknown, res: { status: (code: number) => { json: (body: unknown) => void } }) {
+export default function handler(
+  req: unknown,
+  res: { status: (code: number) => { json: (body: unknown) => void } },
+) {
   res.status(200).json({
     ok: true,
     node: process.version,

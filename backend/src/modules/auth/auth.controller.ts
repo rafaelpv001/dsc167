@@ -41,10 +41,17 @@ export class AuthController {
     const token = this.authService.signToken(admin);
     const isProd = this.config.get('nodeEnv') === 'production';
 
+    // Em produção, frontend e backend normalmente ficam em domínios
+    // diferentes (ex.: dois projetos separados no Vercel) — o navegador
+    // trata isso como cross-site, e SameSite=Lax bloqueia o cookie em
+    // requisições feitas via fetch/XHR (só permite em navegação direta).
+    // SameSite=None exige Secure=true (garantido aqui, já que isProd implica
+    // HTTPS). Em desenvolvimento local (mesmo domínio, HTTP), Lax é
+    // suficiente e evita exigir HTTPS local.
     res.cookie(COOKIE_NAME, token, {
       httpOnly: true,
       secure: isProd,
-      sameSite: 'lax',
+      sameSite: isProd ? 'none' : 'lax',
       maxAge: 1000 * 60 * 60 * 8,
       path: '/',
     });
@@ -60,7 +67,8 @@ export class AuthController {
     @Res({ passthrough: true }) res: Response,
   ) {
     await this.authService.logout(admin.id);
-    res.clearCookie(COOKIE_NAME, { path: '/' });
+    const isProd = this.config.get('nodeEnv') === 'production';
+    res.clearCookie(COOKIE_NAME, { path: '/', secure: isProd, sameSite: isProd ? 'none' : 'lax' });
     return { success: true };
   }
 
